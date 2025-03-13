@@ -9,9 +9,18 @@ app.use(cors());
 
 const PORT = process.env.PORT || 8080;
 
+// DEBUG: Log environment variables
+console.log("BLUESKY_HANDLE:", process.env.BLUESKY_HANDLE ? "Loaded" : "Missing");
+console.log("BLUESKY_PASSWORD:", process.env.BLUESKY_PASSWORD ? "Loaded" : "Missing");
+
 // Load Bluesky credentials securely
 const BLUESKY_HANDLE = process.env.BLUESKY_HANDLE;
 const BLUESKY_PASSWORD = process.env.BLUESKY_PASSWORD;
+
+if (!BLUESKY_HANDLE || !BLUESKY_PASSWORD) {
+  console.error("ERROR: Missing Bluesky credentials. Set BLUESKY_HANDLE and BLUESKY_PASSWORD.");
+  process.exit(1);
+}
 
 const agent = new BskyAgent({ service: "https://bsky.social" });
 
@@ -21,6 +30,7 @@ async function authenticate() {
     console.log("Authenticated successfully!");
   } catch (error) {
     console.error("Authentication failed:", error);
+    process.exit(1);
   }
 }
 
