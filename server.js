@@ -69,11 +69,11 @@ app.get("/xrpc/app.bsky.feed.getFeedSkeleton", async (req, res) => {
     let filteredFeed = posts.map(post => ({ post: post.post.uri }));
 
     // 🔹 If you want to enable filtering, uncomment the next lines
-    /*
+    
     let filteredFeed = posts
       .filter(post => allowedUsers.includes(post.post.author.did)) // Ensure DIDs match!
       .map(post => ({ post: post.post.uri }));
-    */
+    
 
     console.log("📤 Filtered Feed:", JSON.stringify(filteredFeed, null, 2));
 
