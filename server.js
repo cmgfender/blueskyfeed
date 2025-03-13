@@ -39,8 +39,8 @@ app.get("/xrpc/app.bsky.feed.describeFeedGenerator", (req, res) => {
     feeds: [
       {
         uri: "at://did:web:sheriffofpaddys.com/app.bsky.feed.generator/custom-feed",
-        name: "My Custom Feed",
-        description: "A feed of users I like posting on main Bluesky",
+        name: "Sheriff's Feed",
+        description: "All sources have been optically assesed for threats.",
         avatar: "https://sheriffofpaddys.com/avatar.png"
       }
     ]
