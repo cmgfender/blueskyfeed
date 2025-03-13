@@ -9,10 +9,6 @@ app.use(cors());
 
 const PORT = process.env.PORT || 8080;
 
-// DEBUG: Log environment variables
-console.log("BLUESKY_HANDLE:", process.env.BLUESKY_HANDLE ? "Loaded" : "Missing");
-console.log("BLUESKY_PASSWORD:", process.env.BLUESKY_PASSWORD ? "Loaded" : "Missing");
-
 // Load Bluesky credentials securely
 const BLUESKY_HANDLE = process.env.BLUESKY_HANDLE;
 const BLUESKY_PASSWORD = process.env.BLUESKY_PASSWORD;
@@ -27,9 +23,9 @@ const agent = new BskyAgent({ service: "https://bsky.social" });
 async function authenticate() {
   try {
     await agent.login({ identifier: BLUESKY_HANDLE, password: BLUESKY_PASSWORD });
-    console.log("Authenticated successfully!");
+    console.log("✅ Authenticated successfully!");
   } catch (error) {
-    console.error("Authentication failed:", error);
+    console.error("❌ Authentication failed:", error);
     process.exit(1);
   }
 }
@@ -53,23 +49,46 @@ app.get("/xrpc/app.bsky.feed.describeFeedGenerator", (req, res) => {
 
 app.get("/xrpc/app.bsky.feed.getFeedSkeleton", async (req, res) => {
   try {
+    // Read the list of allowed users
     const usersData = JSON.parse(fs.readFileSync("allowedUsers.json", "utf8"));
     const allowedUsers = usersData.users;
 
-    const response = await agent.getTimeline({ limit: 50 });
-    const posts = response.data.feed || [];
+    console.log("✅ Allowed Users:", allowedUsers);
 
-    const filteredFeed = posts
-      .filter(post => allowedUsers.includes(post.post.author.did))
+    // Fetch user's Bluesky feed
+    const response = await agent.getTimeline({ limit: 50 });
+
+    if (!response || !response.data || !response.data.feed) {
+      throw new Error("Invalid response from Bluesky API.");
+    }
+
+    const posts = response.data.feed;
+    console.log("📥 Fetched Posts:", JSON.stringify(posts, null, 2));
+
+    // 🔹 Option: Disable filtering to check if posts appear
+    let filteredFeed = posts.map(post => ({ post: post.post.uri }));
+
+    // 🔹 If you want to enable filtering, uncomment the next lines
+    /*
+    let filteredFeed = posts
+      .filter(post => allowedUsers.includes(post.post.author.did)) // Ensure DIDs match!
       .map(post => ({ post: post.post.uri }));
+    */
+
+    console.log("📤 Filtered Feed:", JSON.stringify(filteredFeed, null, 2));
 
     res.json({ feed: filteredFeed, cursor: "next" });
   } catch (error) {
-    console.error("Error fetching feed:", error);
+    console.error("❌ Error fetching feed:", error);
     res.status(500).json({ error: "Failed to load feed" });
   }
 });
 
+// Prevent Railway from shutting down due to inactivity
+setInterval(() => {
+  console.log("🔄 Keep-alive ping...");
+}, 60 * 1000); // Every 1 minute
+
 app.listen(PORT, () => {
-  console.log(`Feed generator running on port ${PORT}`);
+  console.log(`🚀 Feed generator running on port ${PORT}`);
 });
