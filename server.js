@@ -35,10 +35,10 @@ authenticate();
 
 app.get("/xrpc/app.bsky.feed.describeFeedGenerator", (req, res) => {
   res.json({
-    did: "did:web:sheriffofpaddys.com",
+    did: "did:web:feed.sheriffofpaddys.com",
     feeds: [
       {
-        uri: "at://did:web:sheriffofpaddys.com/app.bsky.feed.generator/custom-feed",
+        uri: "at://did:web:feed.sheriffofpaddys.com/app.bsky.feed.generator/custom-feed",
         name: "Sheriff's Feed",
         description: "All sources have been optically assesed for threats.",
         avatar: "https://sheriffofpaddys.com/avatar.png"
