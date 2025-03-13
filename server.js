@@ -1,14 +1,32 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const fetch = require("node-fetch");
 const fs = require("fs");
+const { BskyAgent } = require("@atproto/api");
 
 const app = express();
 app.use(cors());
 
-const PORT = process.env.PORT || 8080; // Railway assigns this
+const PORT = process.env.PORT || 8080;
 
-// Describe the feed generator
+// Load Bluesky credentials securely
+const BLUESKY_HANDLE = process.env.BLUESKY_HANDLE;
+const BLUESKY_PASSWORD = process.env.BLUESKY_PASSWORD;
+
+const agent = new BskyAgent({ service: "https://bsky.social" });
+
+async function authenticate() {
+  try {
+    await agent.login({ identifier: BLUESKY_HANDLE, password: BLUESKY_PASSWORD });
+    console.log("Authenticated successfully!");
+  } catch (error) {
+    console.error("Authentication failed:", error);
+  }
+}
+
+// Authenticate at startup
+authenticate();
+
 app.get("/xrpc/app.bsky.feed.describeFeedGenerator", (req, res) => {
   res.json({
     did: "did:web:sheriffofpaddys.com",
@@ -23,21 +41,17 @@ app.get("/xrpc/app.bsky.feed.describeFeedGenerator", (req, res) => {
   });
 });
 
-// Get the actual feed posts
 app.get("/xrpc/app.bsky.feed.getFeedSkeleton", async (req, res) => {
   try {
-    // Read the list of allowed users
     const usersData = JSON.parse(fs.readFileSync("allowedUsers.json", "utf8"));
     const allowedUsers = usersData.users;
 
-    // Fetch Bluesky timeline
-    const response = await fetch("https://bsky.social/xrpc/app.bsky.feed.getTimeline");
-    const data = await response.json();
+    const response = await agent.getTimeline({ limit: 50 });
+    const posts = response.data.feed || [];
 
-    // Filter posts from allowed users
-    const filteredFeed = data.feed
-      .filter(post => allowedUsers.includes(post.author.did))
-      .map(post => ({ post: post.uri }));
+    const filteredFeed = posts
+      .filter(post => allowedUsers.includes(post.post.author.did))
+      .map(post => ({ post: post.post.uri }));
 
     res.json({ feed: filteredFeed, cursor: "next" });
   } catch (error) {
@@ -46,7 +60,6 @@ app.get("/xrpc/app.bsky.feed.getFeedSkeleton", async (req, res) => {
   }
 });
 
-// Start the server
 app.listen(PORT, () => {
   console.log(`Feed generator running on port ${PORT}`);
 });
