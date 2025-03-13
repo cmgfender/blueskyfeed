@@ -65,15 +65,17 @@ app.get("/xrpc/app.bsky.feed.getFeedSkeleton", async (req, res) => {
     const posts = response.data.feed;
     console.log("📥 Fetched Posts:", JSON.stringify(posts, null, 2));
 
-    // 🔹 Option: Disable filtering to check if posts appear
-    let filteredFeed = posts.map(post => ({ post: post.post.uri }));
+    // **Option: Enable Filtering by Allowed Users**
+    const enableFiltering = false; // Change to true if you want filtering
+    let filteredFeed;
 
-    // 🔹 If you want to enable filtering, uncomment the next lines
-    
-    let filteredFeed = posts
-      .filter(post => allowedUsers.includes(post.post.author.did)) // Ensure DIDs match!
-      .map(post => ({ post: post.post.uri }));
-    
+    if (enableFiltering) {
+      filteredFeed = posts
+        .filter(post => allowedUsers.includes(post.post.author.did))
+        .map(post => ({ post: post.post.uri }));
+    } else {
+      filteredFeed = posts.map(post => ({ post: post.post.uri }));
+    }
 
     console.log("📤 Filtered Feed:", JSON.stringify(filteredFeed, null, 2));
 
