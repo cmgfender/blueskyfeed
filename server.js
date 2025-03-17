@@ -9,9 +9,10 @@ app.use(cors());
 
 const PORT = process.env.PORT || 8080;
 
-// Load Bluesky credentials securely
+// Load Bluesky credentials
 const BLUESKY_HANDLE = process.env.BLUESKY_HANDLE;
 const BLUESKY_PASSWORD = process.env.BLUESKY_PASSWORD;
+const DID_WEB = "did:web:sheriffofpaddys.com";  // Root domain DID
 
 if (!BLUESKY_HANDLE || !BLUESKY_PASSWORD) {
   console.error("ERROR: Missing Bluesky credentials. Set BLUESKY_HANDLE and BLUESKY_PASSWORD.");
@@ -33,48 +34,47 @@ async function authenticate() {
 // Authenticate at startup
 authenticate();
 
+// Describe feed generator
 app.get("/xrpc/app.bsky.feed.describeFeedGenerator", (req, res) => {
   res.json({
-    did: "did:web:feed.sheriffofpaddys.com",
+    did: DID_WEB, // Use the root domain DID
     feeds: [
       {
-        uri: "at://did:web:feed.sheriffofpaddys.com/app.bsky.feed.generator/custom-feed",
+        uri: `at://${DID_WEB}/app.bsky.feed.generator/custom-feed`,
         name: "Sheriff's Feed",
-        description: "All sources have been optically assesed for threats.",
-        avatar: "https://sheriffofpaddys.com/avatar.png"
+        description: "All sources have been optically assessed for threats.",
+        avatar: "https://sheriffofpaddys.com/avatar.png",
       }
     ]
   });
 });
 
+// Get feed data
 app.get("/xrpc/app.bsky.feed.getFeedSkeleton", async (req, res) => {
   try {
-    // Read the list of allowed users
     const usersData = JSON.parse(fs.readFileSync("allowedUsers.json", "utf8"));
-    const allowedUsers = usersData.users;
+    const allowedUsers = usersData.users || [];
 
     console.log("✅ Allowed Users:", allowedUsers);
 
-    // Fetch user's Bluesky feed
+    // Fetch Bluesky timeline
     const response = await agent.getTimeline({ limit: 50 });
 
-    if (!response || !response.data || !response.data.feed) {
+    if (!response?.data?.feed) {
       throw new Error("Invalid response from Bluesky API.");
     }
 
     const posts = response.data.feed;
     console.log("📥 Fetched Posts:", JSON.stringify(posts, null, 2));
 
-    // **Option: Enable Filtering by Allowed Users**
-    const enableFiltering = false; // Change to true if you want filtering
-    let filteredFeed;
+    // Filter posts if needed
+    const enableFiltering = process.env.ENABLE_FILTERING === "true";
+    let filteredFeed = posts.map(post => ({ post: post.post.uri }));
 
     if (enableFiltering) {
       filteredFeed = posts
         .filter(post => allowedUsers.includes(post.post.author.did))
         .map(post => ({ post: post.post.uri }));
-    } else {
-      filteredFeed = posts.map(post => ({ post: post.post.uri }));
     }
 
     console.log("📤 Filtered Feed:", JSON.stringify(filteredFeed, null, 2));
@@ -86,10 +86,10 @@ app.get("/xrpc/app.bsky.feed.getFeedSkeleton", async (req, res) => {
   }
 });
 
-// Prevent Railway from shutting down due to inactivity
+// Keep Railway from shutting down
 setInterval(() => {
   console.log("🔄 Keep-alive ping...");
-}, 60 * 1000); // Every 1 minute
+}, 60 * 1000);
 
 app.listen(PORT, () => {
   console.log(`🚀 Feed generator running on port ${PORT}`);
